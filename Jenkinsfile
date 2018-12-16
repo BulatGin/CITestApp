@@ -1,27 +1,36 @@
-def IMAGE="bulatgin/ci-test:latest"
+pipeline {
+    agent any
 
-node {
-    stage('Initialization') {
-        def dockerHome = tool 'DefaultDocker'
-        def mavenHome  = tool 'DefaultMaven'
-        env.PATH = "${dockerHome}/bin:${mavenHome}/bin:${env.PATH}"
+    tools {
+        maven 'DefaultMaven'
     }
 
-    stage('Prebuild') {
-        sh "mvn clean compile"
+    environment {
+        IMAGE = 'bulatgin/ci-test:latest'
     }
 
-    stage('Test') {
-        sh "mvn test"
-    }
-
-    stage('DockerBuild') {
-        sh "mvn package -Dmaven.test.skip=true"
-        sh "docker image prune -f"
-        sh "docker build -t ${IMAGE}"
-        withCredentials([usernamePassword(credentialsId: 'dockerHubCredentials', usernameVariable: 'username', passwordVariable: 'password')]) {
-            sh "docker login -u $password -p $password"
+    stages {
+        stage('Prebuild') {
+            steps {
+                sh "mvn package -Dmaven.test.skip=true"
+            }
         }
-        sh "docker push ${IMAGE}"
+
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('DockerBuild') {
+            steps {
+                sh "docker image prune -f"
+                sh "docker build -t ${IMAGE} ."
+                withCredentials([usernamePassword(credentialsId: 'dockerHubCredentials', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUsername')]) {
+                    sh "docker login -u ${dockerHubUsername} -p ${dockerHubPassword}"
+                }
+                sh "docker push ${IMAGE}"
+            }
+        }
     }
 }
