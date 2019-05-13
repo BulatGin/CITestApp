@@ -3,14 +3,31 @@ image: maven:3.5.4-jdk-8-alpine
 stages:
   - build
   - test
+  - deploy
 
 build:
   stage: build
   script: 
     - mvn package -Dmaven.test.skip=true
+  only:
+    - master
+  tags:
+    - docker
 
 test:
   stage: test
   script:
     - mvn test
-  
+  only:
+    - master
+  tags:
+    - docker
+    
+deploy:
+  stage: deploy
+  script:
+    - mvn tomcat:deploy
+  only:
+    - master
+  tags:
+    - deploy
